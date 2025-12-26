@@ -1,8 +1,31 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Pesticide, getCategoryColor } from "@/data/pesticides";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
+export interface Pesticide {
+  id: string | number;
+  name: string;
+  category: 'Insecticide' | 'Herbicide' | 'Fungicide' | 'Rodenticide' | 'Bactericide';
+  usedFor: string[];
+  hazards: string;
+  precautions: string;
+  activeIngredient: string;
+  applicationMethod: string;
+  safetyInterval: string;
+  image?: string;
+}
+
+export const getCategoryColor = (category: Pesticide['category']) => {
+  const colors = {
+    Insecticide: 'bg-amber-100 text-amber-800 border-amber-200',
+    Herbicide: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    Fungicide: 'bg-purple-100 text-purple-800 border-purple-200',
+    Rodenticide: 'bg-red-100 text-red-800 border-red-200',
+    Bactericide: 'bg-blue-100 text-blue-800 border-blue-200',
+  };
+  return colors[category];
+};
 import { ArrowRight, AlertTriangle, Shield } from "lucide-react";
 
 interface PesticideCardProps {
