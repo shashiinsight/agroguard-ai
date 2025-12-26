@@ -1,31 +1,76 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Layout } from "@/components/layout/Layout";
-import { PesticideCard } from "@/components/pesticides/PesticideCard";
+import { PesticideCard, Pesticide } from "@/components/pesticides/PesticideCard";
 import { SearchFilter } from "@/components/pesticides/SearchFilter";
-import { pesticides } from "@/data/pesticides";
-import { Leaf, Package } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Leaf, Package, Loader2 } from "lucide-react";
+
+interface DbPesticide {
+  id: string;
+  name: string;
+  category: string;
+  used_for: string[];
+  hazards: string;
+  precautions: string;
+  active_ingredient: string;
+  application_method: string;
+  safety_interval: string;
+  image_url: string | null;
+}
 
 export default function Pesticides() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [pesticides, setPesticides] = useState<DbPesticide[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredPesticides = useMemo(() => {
-    return pesticides.filter((pesticide) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        pesticide.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        pesticide.activeIngredient.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        pesticide.usedFor.some((crop) =>
-          crop.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+  useEffect(() => {
+    const fetchPesticides = async () => {
+      const { data, error } = await supabase
+        .from("pesticides")
+        .select("*")
+        .order("name");
 
-      const matchesCategory =
-        selectedCategory === "All" || pesticide.category === selectedCategory;
+      if (error) {
+        console.error("Error fetching pesticides:", error);
+      } else {
+        setPesticides(data || []);
+      }
+      setIsLoading(false);
+    };
 
-      return matchesSearch && matchesCategory;
-    });
-  }, [searchQuery, selectedCategory]);
+    fetchPesticides();
+  }, []);
+
+  const filteredPesticides = pesticides.filter((pesticide) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      pesticide.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      pesticide.active_ingredient.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      pesticide.used_for.some((crop) =>
+        crop.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+    const matchesCategory =
+      selectedCategory === "All" || pesticide.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  // Transform DB pesticide to component format
+  const transformPesticide = (p: DbPesticide) => ({
+    id: p.id,
+    name: p.name,
+    category: p.category as any,
+    usedFor: p.used_for,
+    hazards: p.hazards,
+    precautions: p.precautions,
+    activeIngredient: p.active_ingredient,
+    applicationMethod: p.application_method,
+    safetyInterval: p.safety_interval,
+    image: p.image_url || undefined,
+  });
 
   return (
     <Layout>
@@ -78,11 +123,19 @@ export default function Pesticides() {
             </p>
           </div>
 
-          {/* Pesticide Grid */}
-          {filteredPesticides.length > 0 ? (
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredPesticides.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredPesticides.map((pesticide, index) => (
-                <PesticideCard key={pesticide.id} pesticide={pesticide} index={index} />
+                <PesticideCard 
+                  key={pesticide.id} 
+                  pesticide={transformPesticide(pesticide)} 
+                  index={index} 
+                />
               ))}
             </div>
           ) : (

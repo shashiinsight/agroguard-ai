@@ -17,7 +17,6 @@ import {
   Menu,
   X
 } from "lucide-react";
-import { pesticides, Pesticide, getCategoryColor } from "@/data/pesticides";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -28,40 +27,130 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-const stats = [
-  { label: "Total Pesticides", value: "12", icon: Package, color: "text-primary" },
-  { label: "Categories", value: "5", icon: BarChart3, color: "text-accent" },
-  { label: "Messages", value: "24", icon: MessageSquare, color: "text-leaf" },
-  { label: "Active Users", value: "156", icon: Users, color: "text-earth" },
-];
+interface Pesticide {
+  id: string;
+  name: string;
+  category: string;
+  used_for: string[];
+  active_ingredient: string;
+}
+
+const getCategoryColor = (category: string) => {
+  const colors: Record<string, string> = {
+    Insecticide: 'bg-amber-100 text-amber-800 border-amber-200',
+    Herbicide: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    Fungicide: 'bg-purple-100 text-purple-800 border-purple-200',
+    Rodenticide: 'bg-red-100 text-red-800 border-red-200',
+    Bactericide: 'bg-blue-100 text-blue-800 border-blue-200',
+  };
+  return colors[category] || 'bg-gray-100 text-gray-800 border-gray-200';
+};
 
 export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<Pesticide | null>(null);
+  const [pesticides, setPesticides] = useState<Pesticide[]>([]);
+  const [stats, setStats] = useState({
+    totalPesticides: 0,
+    categories: 0,
+    messages: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, isAdmin, isLoading: authLoading, signOut } = useAuth();
 
+  // Redirect if not admin
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      navigate("/admin/login");
+    if (!authLoading && (!user || !isAdmin)) {
+      navigate("/auth");
     }
-  }, [navigate]);
+  }, [user, isAdmin, authLoading, navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminToken");
+  // Fetch data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch pesticides
+        const { data: pesticidesData, error: pesticidesError } = await supabase
+          .from("pesticides")
+          .select("id, name, category, used_for, active_ingredient")
+          .order("name");
+
+        if (pesticidesError) throw pesticidesError;
+        setPesticides(pesticidesData || []);
+
+        // Calculate stats
+        const categories = new Set(pesticidesData?.map(p => p.category) || []);
+        
+        // Fetch message count
+        const { count: messageCount } = await supabase
+          .from("contact_messages")
+          .select("*", { count: "exact", head: true });
+
+        setStats({
+          totalPesticides: pesticidesData?.length || 0,
+          categories: categories.size,
+          messages: messageCount || 0,
+        });
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load data. Please refresh the page.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user && isAdmin) {
+      fetchData();
+    }
+  }, [user, isAdmin, toast]);
+
+  const handleLogout = async () => {
+    await signOut();
     toast({ title: "Logged out successfully" });
-    navigate("/admin/login");
+    navigate("/");
   };
 
-  const handleDelete = () => {
-    toast({
-      title: "Pesticide deleted",
-      description: `${deleteDialog?.name} has been removed from the database.`,
-    });
-    setDeleteDialog(null);
+  const handleDelete = async () => {
+    if (!deleteDialog) return;
+
+    try {
+      const { error } = await supabase
+        .from("pesticides")
+        .delete()
+        .eq("id", deleteDialog.id);
+
+      if (error) throw error;
+
+      setPesticides(prev => prev.filter(p => p.id !== deleteDialog.id));
+      setStats(prev => ({
+        ...prev,
+        totalPesticides: prev.totalPesticides - 1,
+      }));
+
+      toast({
+        title: "Pesticide deleted",
+        description: `${deleteDialog.name} has been removed from the database.`,
+      });
+    } catch (error) {
+      console.error("Error deleting pesticide:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete pesticide. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialog(null);
+    }
   };
 
   const filteredPesticides = pesticides.filter(
@@ -69,6 +158,20 @@ export default function AdminDashboard() {
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  const statsData = [
+    { label: "Total Pesticides", value: stats.totalPesticides.toString(), icon: Package, color: "text-primary" },
+    { label: "Categories", value: stats.categories.toString(), icon: BarChart3, color: "text-accent" },
+    { label: "Messages", value: stats.messages.toString(), icon: MessageSquare, color: "text-leaf" },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -116,6 +219,11 @@ export default function AdminDashboard() {
             >
               <MessageSquare className="h-5 w-5" />
               Messages
+              {stats.messages > 0 && (
+                <span className="ml-auto bg-sidebar-primary text-sidebar-primary-foreground text-xs px-2 py-0.5 rounded-full">
+                  {stats.messages}
+                </span>
+              )}
             </a>
             <a
               href="#"
@@ -123,13 +231,6 @@ export default function AdminDashboard() {
             >
               <BarChart3 className="h-5 w-5" />
               Analytics
-            </a>
-            <a
-              href="#"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-sidebar-accent/50 transition-colors"
-            >
-              <Users className="h-5 w-5" />
-              Users
             </a>
           </nav>
         </div>
@@ -171,7 +272,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
-                A
+                {user?.email?.charAt(0).toUpperCase() || "A"}
               </div>
             </div>
           </div>
@@ -179,8 +280,8 @@ export default function AdminDashboard() {
 
         <main className="p-4 lg:p-8">
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {stats.map((stat, index) => (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            {statsData.map((stat, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
@@ -249,8 +350,8 @@ export default function AdminDashboard() {
                       </td>
                       <td className="p-4 hidden md:table-cell">
                         <p className="text-sm text-muted-foreground">
-                          {pesticide.usedFor.slice(0, 2).join(", ")}
-                          {pesticide.usedFor.length > 2 && "..."}
+                          {pesticide.used_for.slice(0, 2).join(", ")}
+                          {pesticide.used_for.length > 2 && "..."}
                         </p>
                       </td>
                       <td className="p-4">
@@ -272,6 +373,12 @@ export default function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+
+              {filteredPesticides.length === 0 && (
+                <div className="p-8 text-center">
+                  <p className="text-muted-foreground">No pesticides found</p>
+                </div>
+              )}
             </div>
           </div>
         </main>

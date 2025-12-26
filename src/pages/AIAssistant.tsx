@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, Send, Leaf, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
+import { Bot, Send, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const exampleQueries = [
   "What pesticide should I use for rice crops?",
@@ -21,6 +22,7 @@ export default function AIAssistant() {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,33 +30,97 @@ export default function AIAssistant() {
 
     const userMessage = query.trim();
     setQuery("");
+    setError(null);
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
-    // Simulate AI response (replace with actual API call when Cloud is enabled)
-    setTimeout(() => {
-      const response = generateMockResponse(userMessage);
-      setMessages((prev) => [...prev, { role: "assistant", content: response }]);
-      setIsLoading(false);
-    }, 1500);
-  };
+    try {
+      const chatMessages = [...messages, { role: "user" as const, content: userMessage }];
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ messages: chatMessages }),
+        }
+      );
 
-  const generateMockResponse = (query: string): string => {
-    const lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.includes("rice")) {
-      return "For rice crops, I recommend considering **Imidacloprid** for sucking pest control or **Chlorpyrifos** for stem borers. Always follow the recommended dosage and observe the safety interval of 30 days before harvest. For fungal diseases like blast, consider using **Carbendazim**.\n\n⚠️ **Safety Note**: Wear protective equipment during application and avoid application near water bodies.";
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to get AI response");
+      }
+
+      if (!response.body) {
+        throw new Error("No response body");
+      }
+
+      // Stream the response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = "";
+      let textBuffer = "";
+
+      // Add empty assistant message to update
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        // Process line-by-line
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage?.role === "assistant") {
+                  lastMessage.content = assistantContent;
+                }
+                return newMessages;
+              });
+            }
+          } catch {
+            // Incomplete JSON, put back and wait
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+    } catch (err) {
+      console.error("AI Chat error:", err);
+      setError(err instanceof Error ? err.message : "Failed to get AI response");
+      // Remove the empty assistant message if there was an error
+      setMessages((prev) => {
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage?.role === "assistant" && lastMessage.content === "") {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    if (lowerQuery.includes("tomato") || lowerQuery.includes("aphid")) {
-      return "For aphid control on tomato plants, **Imidacloprid 17.8% SL** is highly effective. Apply at 0.3-0.5 ml per liter of water as a foliar spray. Alternatively, consider neem-based products for organic control.\n\n**Application Tips**:\n- Apply during early morning or evening\n- Ensure thorough coverage under leaves\n- Repeat after 10-14 days if needed";
-    }
-    
-    if (lowerQuery.includes("grape") || lowerQuery.includes("fungicide")) {
-      return "For grape cultivation, **Mancozeb 75% WP** is excellent for downy mildew prevention. Use at 2-2.5 g per liter of water. For powdery mildew, consider sulfur-based fungicides.\n\n**Important**: Maintain a 21-day safety interval before harvest.";
-    }
-    
-    return "Based on your query, I recommend consulting our pesticide database for detailed information. You can search for specific pesticides by crop type, pest name, or disease.\n\n**General Tips**:\n- Always identify the pest/disease correctly before treatment\n- Follow Integrated Pest Management (IPM) practices\n- Read and follow label instructions carefully\n\nWould you like me to help with a more specific query?";
   };
 
   const handleExampleClick = (example: string) => {
@@ -63,6 +129,7 @@ export default function AIAssistant() {
 
   const clearChat = () => {
     setMessages([]);
+    setError(null);
   };
 
   return (
@@ -85,7 +152,7 @@ export default function AIAssistant() {
             </h1>
             <p className="text-primary-foreground/80 text-lg">
               Get intelligent recommendations based on your crop, pest problems, 
-              or disease symptoms. Our AI is trained on agricultural expertise.
+              or disease symptoms. Powered by advanced AI.
             </p>
           </motion.div>
         </div>
@@ -151,33 +218,30 @@ export default function AIAssistant() {
                           </div>
                         )}
                         <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                          {message.content}
+                          {message.content || (isLoading && message.role === "assistant" ? (
+                            <div className="flex gap-1">
+                              <span className="h-2 w-2 bg-current/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                              <span className="h-2 w-2 bg-current/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                              <span className="h-2 w-2 bg-current/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                            </div>
+                          ) : "")}
                         </div>
                       </div>
                     </motion.div>
                   ))}
-                  
-                  {isLoading && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex justify-start"
-                    >
-                      <div className="bg-secondary rounded-2xl px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Bot className="h-4 w-4 text-secondary-foreground" />
-                          <div className="flex gap-1">
-                            <span className="h-2 w-2 bg-secondary-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                            <span className="h-2 w-2 bg-secondary-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                            <span className="h-2 w-2 bg-secondary-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
                 </>
               )}
             </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="px-6 pb-4">
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  {error}
+                </div>
+              </div>
+            )}
 
             {/* Input Area */}
             <div className="border-t border-border/50 p-4">
