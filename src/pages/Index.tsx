@@ -13,6 +13,8 @@ import {
   BookOpen,
   Users
 } from "lucide-react";
+import heroImage from "@/assets/hero-agriculture.jpg";
+import pesticideAppImage from "@/assets/pesticide-application.jpg";
 
 const features = [
   {
@@ -48,24 +50,33 @@ export default function Index() {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-hero-gradient bg-hero-pattern text-primary-foreground">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/10" />
+      <section className="relative overflow-hidden min-h-[90vh] flex items-center">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <img 
+            src={heroImage} 
+            alt="Agricultural farmland" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/85 to-primary/60" />
+          <div className="absolute inset-0 bg-hero-pattern opacity-30" />
+        </div>
         
-        <div className="container mx-auto px-4 py-20 lg:py-32 relative">
-          <div className="max-w-3xl mx-auto text-center">
+        <div className="container mx-auto px-4 py-20 lg:py-32 relative z-10">
+          <div className="max-w-3xl">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm mb-6 text-primary-foreground">
                 <Leaf className="h-4 w-4" />
                 <span className="text-sm font-medium">Trusted Agricultural Resource</span>
               </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6 text-primary-foreground">
                 Your Complete Guide to{" "}
-                <span className="relative">
+                <span className="relative inline-block">
                   Pesticide Safety
                   <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
                     <path d="M2 10C50 3 150 3 298 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="text-accent"/>
@@ -73,12 +84,12 @@ export default function Index() {
                 </span>
               </h1>
               
-              <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
+              <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 max-w-2xl">
                 Empowering farmers, researchers, and students with accurate pesticide information, 
                 AI-powered recommendations, and comprehensive safety guidelines.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/pesticides">
                   <Button variant="accent" size="xl">
                     Explore Pesticides
@@ -171,47 +182,61 @@ export default function Index() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Image CTA Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="relative overflow-hidden rounded-3xl bg-hero-gradient p-8 md:p-16"
-          >
-            <div className="absolute inset-0 bg-hero-pattern opacity-50" />
-            <div className="relative z-10 max-w-2xl">
-              <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
+          <div className="grid lg:grid-cols-2 gap-8 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="relative rounded-2xl overflow-hidden shadow-elevated"
+            >
+              <img 
+                src={pesticideAppImage} 
+                alt="Farmer applying pesticides" 
+                className="w-full h-80 lg:h-96 object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent" />
+              <div className="absolute bottom-6 left-6 right-6">
+                <p className="text-primary-foreground text-lg font-medium">
+                  Safe & Effective Application
+                </p>
+                <p className="text-primary-foreground/80 text-sm">
+                  Learn proper techniques for pesticide application
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="lg:pl-8"
+            >
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
                 Ready to Make Informed Decisions?
               </h2>
-              <p className="text-primary-foreground/80 text-lg mb-8">
+              <p className="text-muted-foreground text-lg mb-8">
                 Start exploring our comprehensive pesticide database today. Get AI-powered recommendations 
-                tailored to your specific needs.
+                tailored to your specific needs and protect your crops effectively.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/pesticides">
-                  <Button variant="accent" size="lg">
+                  <Button size="lg">
                     Browse All Pesticides
                   </Button>
                 </Link>
                 <Link to="/contact">
-                  <Button variant="glass" size="lg" className="bg-primary-foreground/10 text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/20">
+                  <Button variant="outline" size="lg">
                     Contact Us
                   </Button>
                 </Link>
               </div>
-            </div>
-            
-            {/* Decorative Elements */}
-            <div className="absolute right-8 top-1/2 -translate-y-1/2 hidden lg:block">
-              <div className="relative">
-                <div className="h-48 w-48 rounded-full bg-primary-foreground/10 animate-pulse-soft" />
-                <Leaf className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-20 w-20 text-primary-foreground/40" />
-              </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </section>
 

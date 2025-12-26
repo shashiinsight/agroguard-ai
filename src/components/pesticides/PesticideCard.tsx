@@ -18,8 +18,26 @@ export function PesticideCard({ pesticide, index }: PesticideCardProps) {
       transition={{ duration: 0.4, delay: index * 0.05 }}
     >
       <Link to={`/pesticides/${pesticide.id}`}>
-        <Card className="group h-full bg-card-gradient hover:shadow-card transition-all duration-300 hover:-translate-y-1 border-border/50 overflow-hidden">
-          <CardHeader className="pb-3">
+        <Card className="group h-full hover:shadow-card transition-all duration-300 hover:-translate-y-1 border-border/50 overflow-hidden">
+          {/* Card Image */}
+          {pesticide.image && (
+            <div className="relative h-40 overflow-hidden">
+              <img
+                src={pesticide.image}
+                alt={`${pesticide.name} - ${pesticide.category}`}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
+              <Badge 
+                variant="outline" 
+                className={`absolute top-3 right-3 ${getCategoryColor(pesticide.category)} text-xs font-medium border backdrop-blur-sm`}
+              >
+                {pesticide.category}
+              </Badge>
+            </div>
+          )}
+          
+          <CardHeader className={`pb-3 ${!pesticide.image ? 'pt-6' : 'pt-4'}`}>
             <div className="flex items-start justify-between gap-2">
               <div>
                 <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors">
@@ -29,12 +47,14 @@ export function PesticideCard({ pesticide, index }: PesticideCardProps) {
                   {pesticide.activeIngredient}
                 </p>
               </div>
-              <Badge 
-                variant="outline" 
-                className={`${getCategoryColor(pesticide.category)} text-xs font-medium border`}
-              >
-                {pesticide.category}
-              </Badge>
+              {!pesticide.image && (
+                <Badge 
+                  variant="outline" 
+                  className={`${getCategoryColor(pesticide.category)} text-xs font-medium border`}
+                >
+                  {pesticide.category}
+                </Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
