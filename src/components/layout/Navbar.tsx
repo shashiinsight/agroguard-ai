@@ -89,17 +89,21 @@ export function Navbar() {
                     </p>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="cursor-pointer">
+                      <User className="h-4 w-4 mr-2" />
+                      My Profile
+                    </Link>
+                  </DropdownMenuItem>
                   {isAdmin && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/admin/dashboard" className="cursor-pointer">
-                          <Shield className="h-4 w-4 mr-2" />
-                          Admin Dashboard
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin/dashboard" className="cursor-pointer">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
                   )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
                     <LogOut className="h-4 w-4 mr-2" />
                     Sign Out
@@ -167,6 +171,12 @@ export function Navbar() {
                           {isAdmin ? "Administrator" : "User"}
                         </p>
                       </div>
+                      <Link to="/profile" onClick={() => setIsOpen(false)}>
+                        <Button variant="outline" className="w-full justify-start">
+                          <User className="h-4 w-4 mr-2" />
+                          My Profile
+                        </Button>
+                      </Link>
                       {isAdmin && (
                         <Link to="/admin/dashboard" onClick={() => setIsOpen(false)}>
                           <Button variant="outline" className="w-full justify-start">
