@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Leaf, Lock, User, AlertCircle, Mail } from "lucide-react";
+import { Leaf, Lock, User, AlertCircle, Mail, Shield, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { z } from "zod";
@@ -21,6 +21,9 @@ const signupSchema = z.object({
 });
 
 export default function Auth() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname === "/admin/login";
+  
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,18 +32,21 @@ export default function Auth() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp, user, isAdmin } = useAuth();
+  const { signIn, signUp, user, isAdmin, isLoading: authLoading } = useAuth();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       if (isAdmin) {
         navigate("/admin/dashboard");
+      } else if (isAdminRoute) {
+        // User is logged in but not admin, show error
+        setError("You don't have admin privileges. Please contact an administrator.");
       } else {
         navigate("/");
       }
     }
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, navigate, authLoading, isAdminRoute]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,19 +116,37 @@ export default function Auth() {
           {/* Logo */}
           <div className="text-center mb-8">
             <Link to="/">
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground mb-4">
-                <Leaf className="h-7 w-7" />
+              <div className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl mb-4 ${
+                isAdminRoute 
+                  ? "bg-amber-500 text-white" 
+                  : "bg-primary text-primary-foreground"
+              }`}>
+                {isAdminRoute ? <Shield className="h-7 w-7" /> : <Leaf className="h-7 w-7" />}
               </div>
             </Link>
             <h1 className="text-2xl font-bold text-foreground">
-              {isLogin ? "Welcome Back" : "Create Account"}
+              {isAdminRoute 
+                ? "Admin Login" 
+                : isLogin 
+                  ? "Welcome Back" 
+                  : "Create Account"}
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              {isLogin
-                ? "Sign in to access the admin dashboard"
-                : "Sign up to get started with PestInfo"}
+              {isAdminRoute
+                ? "Sign in with your admin credentials"
+                : isLogin
+                  ? "Sign in to access your account"
+                  : "Sign up to get started with PestInfo"}
             </p>
           </div>
+
+          {/* Admin Badge */}
+          {isAdminRoute && (
+            <div className="mb-6 flex items-center justify-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-600 dark:text-amber-400 text-sm">
+              <Shield className="h-4 w-4" />
+              Admin access requires elevated privileges
+            </div>
+          )}
 
           {/* Error Alert */}
           {error && (
@@ -134,7 +158,7 @@ export default function Auth() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {!isLogin && (
+            {!isLogin && !isAdminRoute && (
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <div className="relative">
@@ -146,7 +170,7 @@ export default function Auth() {
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="John Doe"
                     className="pl-10"
-                    required={!isLogin}
+                    required={!isLogin && !isAdminRoute}
                   />
                 </div>
               </div>
@@ -184,7 +208,12 @@ export default function Auth() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className={`w-full ${isAdminRoute ? "bg-amber-500 hover:bg-amber-600" : ""}`} 
+              size="lg" 
+              disabled={isLoading}
+            >
               {isLoading
                 ? isLogin
                   ? "Signing in..."
@@ -195,26 +224,50 @@ export default function Auth() {
             </Button>
           </form>
 
-          {/* Toggle */}
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError("");
-              }}
-              className="text-sm text-primary hover:underline"
-            >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Sign in"}
-            </button>
+          {/* Toggle - only show for regular auth, not admin */}
+          {!isAdminRoute && (
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setError("");
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                {isLogin
+                  ? "Don't have an account? Sign up"
+                  : "Already have an account? Sign in"}
+              </button>
+            </div>
+          )}
+
+          {/* Switch between User/Admin login */}
+          <div className="mt-4 pt-4 border-t border-border/50">
+            {isAdminRoute ? (
+              <Link 
+                to="/auth" 
+                className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <User className="h-4 w-4" />
+                Sign in as regular user
+              </Link>
+            ) : (
+              <Link 
+                to="/admin/login" 
+                className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Shield className="h-4 w-4" />
+                Sign in as admin
+              </Link>
+            )}
           </div>
 
           {/* Back Link */}
           <div className="mt-4 text-center">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-              ← Back to Home
+            <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-3 w-3" />
+              Back to Home
             </Link>
           </div>
         </div>
