@@ -22,6 +22,7 @@ interface DbPesticide {
 export default function Pesticides() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCrop, setSelectedCrop] = useState("All");
   const [pesticides, setPesticides] = useState<DbPesticide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,6 +44,11 @@ export default function Pesticides() {
     fetchPesticides();
   }, []);
 
+  // Extract unique crops from all pesticides
+  const availableCrops = Array.from(
+    new Set(pesticides.flatMap((p) => p.used_for))
+  ).sort();
+
   const filteredPesticides = pesticides.filter((pesticide) => {
     const matchesSearch =
       searchQuery === "" ||
@@ -55,7 +61,13 @@ export default function Pesticides() {
     const matchesCategory =
       selectedCategory === "All" || pesticide.category === selectedCategory;
 
-    return matchesSearch && matchesCategory;
+    const matchesCrop =
+      selectedCrop === "All" ||
+      pesticide.used_for.some(
+        (crop) => crop.toLowerCase() === selectedCrop.toLowerCase()
+      );
+
+    return matchesSearch && matchesCategory && matchesCrop;
   });
 
   // Transform DB pesticide to component format
@@ -110,6 +122,9 @@ export default function Pesticides() {
               setSearchQuery={setSearchQuery}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
+              selectedCrop={selectedCrop}
+              setSelectedCrop={setSelectedCrop}
+              availableCrops={availableCrops}
             />
           </div>
 
