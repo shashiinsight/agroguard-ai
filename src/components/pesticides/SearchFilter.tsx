@@ -18,6 +18,7 @@ interface SearchFilterProps {
   selectedCrop: string;
   setSelectedCrop: (crop: string) => void;
   availableCrops: string[];
+  onClearFilters: () => void;
 }
 
 export function SearchFilter({
@@ -28,7 +29,10 @@ export function SearchFilter({
   selectedCrop,
   setSelectedCrop,
   availableCrops,
+  onClearFilters,
 }: SearchFilterProps) {
+  const hasActiveFilters = searchQuery !== "" || selectedCategory !== "All" || selectedCrop !== "All";
+
   return (
     <div className="bg-card rounded-2xl p-6 shadow-soft border border-border/50">
       <div className="flex flex-col gap-4">
@@ -74,22 +78,37 @@ export function SearchFilter({
         </div>
 
         {/* Category Filters */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <div className="flex items-center gap-2 text-muted-foreground mr-2">
-            <Filter className="h-4 w-4" />
-            <span className="text-sm font-medium hidden sm:inline">Category:</span>
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex items-center gap-2 text-muted-foreground mr-2">
+              <Filter className="h-4 w-4" />
+              <span className="text-sm font-medium hidden sm:inline">Category:</span>
+            </div>
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "secondary"}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+                className="rounded-full"
+              >
+                {category}
+              </Button>
+            ))}
           </div>
-          {categories.map((category) => (
+
+          {/* Clear All Filters Button */}
+          {hasActiveFilters && (
             <Button
-              key={category}
-              variant={selectedCategory === category ? "default" : "secondary"}
+              variant="ghost"
               size="sm"
-              onClick={() => setSelectedCategory(category)}
-              className="rounded-full"
+              onClick={onClearFilters}
+              className="text-muted-foreground hover:text-foreground gap-1"
             >
-              {category}
+              <X className="h-3 w-3" />
+              Clear all filters
             </Button>
-          ))}
+          )}
         </div>
       </div>
     </div>
