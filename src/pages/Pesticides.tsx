@@ -70,6 +70,12 @@ export default function Pesticides() {
     return matchesSearch && matchesCategory && matchesCrop;
   });
 
+  const handleClearFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("All");
+    setSelectedCrop("All");
+  };
+
   // Transform DB pesticide to component format
   const transformPesticide = (p: DbPesticide) => ({
     id: p.id,
@@ -125,6 +131,7 @@ export default function Pesticides() {
               selectedCrop={selectedCrop}
               setSelectedCrop={setSelectedCrop}
               availableCrops={availableCrops}
+              onClearFilters={handleClearFilters}
             />
           </div>
 
